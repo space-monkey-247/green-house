@@ -1,0 +1,4 @@
+
+	# bugs
+		https://ubidots.com/community/t/solved-possible-number-of-variables-and-sources-to-publish-using-mqtt/924
+		I’ve reproduced the issue when trying to publish more than four variables and the problems comes from the max packet size defined by default in the PubSubclient library, to publish many variables simply define at PubSubClient.h the MQTT_MAX_PACKET_SIZE to 512 and you will fix the issue. I will release a new update to treat with this, thanks for the report.
