@@ -21,10 +21,10 @@ IF EXIST "%dest_dir%\ubidots-particle-mqtt-master" (
 	DEL "%dest_dir%\ubidots-particle-mqtt-master" /Q /F /S
 )
 
-rem delete solar-panel-master
-IF EXIST "%dest_dir%\solar-panel-master" (
-	echo Deleting "%dest_dir%\solar-panel-master" dir. 
-	DEL "%dest_dir%\solar-panel-master" /Q /F /S
+rem delete green-house-master
+IF EXIST "%dest_dir%\green-house-master" (
+	echo Deleting "%dest_dir%\green-house-master" dir. 
+	DEL "%dest_dir%\green-house-master" /Q /F /S
 )
 
 IF EXIST "%dest_dir%" (

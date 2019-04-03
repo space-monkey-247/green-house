@@ -59,6 +59,7 @@ class Ubidots {
     uint8_t currentValue;
     char* _password;
     char* _server;
+    char* _first_part_topic;
     char* _ssid;
     char* _token;
     Value * val;
@@ -77,6 +78,7 @@ class Ubidots {
     bool ubidotsPublish(char *deviceLabel);
     bool ubidotsPublishOnlyValues(char *deviceLabel, bool freeMemory);
     void ubidotsSetBroker(char* broker);
+    void ubidotsSetFirstPartTopic(char* firstPartTopic);
     void reconnect();
     void disconnect();
     void setDebug(bool debug);

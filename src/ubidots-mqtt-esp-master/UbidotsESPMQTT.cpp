@@ -107,8 +107,9 @@ char* Ubidots::getMac() {
 }
 
 
-void Ubidots::initialize(char* token, char* clientName){
+void Ubidots::initialize(char* token, char* clientName) {
     _server = SERVER;
+    _first_part_topic = FIRST_PART_TOPIC;
     _token = token;
     currentValue = 0;
     val = (Value *)malloc(MAX_VALUES*sizeof(Value));
@@ -153,17 +154,20 @@ void Ubidots::setDebug(bool debug){
 }
 
 
-void Ubidots::ubidotsSetBroker(char* broker){
+void Ubidots::ubidotsSetBroker(char* broker) {
     if (_debug){
         Serial.println("Broker set for Business Account");
     }
     _server = broker;
 }
 
+void Ubidots::ubidotsSetFirstPartTopic(char* firstPartTopic) {
+    _first_part_topic = firstPartTopic;
+}
 
 bool Ubidots::ubidotsSubscribe(char* deviceLabel, char* variableLabel) {
     char topic[150];
-    sprintf(topic, "%s%s/%s/lv", FIRST_PART_TOPIC, deviceLabel, variableLabel);
+    sprintf(topic, "%s%s/%s/lv", _first_part_topic, deviceLabel, variableLabel);
     if (!_client.connected()) {
         reconnect();
     }
@@ -182,7 +186,7 @@ bool Ubidots::ubidotsPublish(char *deviceLabel) {
 
     // JSON dict: {"solar-panel-temperature": {"value": 10.00}, "boiler-temperature": {"value": 20.00}}
 
-    sprintf(topic, "%s%s", FIRST_PART_TOPIC, deviceLabel);
+    sprintf(topic, "%s%s", _first_part_topic, deviceLabel);
     sprintf(payload, "{");
     for (int i = 0; i <= currentValue; ) {
         str = String((val+i)->_value, 2);
@@ -217,13 +221,13 @@ bool Ubidots::ubidotsPublish(char *deviceLabel) {
 }
 
 bool Ubidots::ubidotsPublishOnlyValues(char *deviceLabel, bool freeMemory) {
-    char topic[150];
-    char payload[500];
+    char topic[500];
+    char payload[2000];
     String str;
 
     // JSON dict: {"solar-panel-temperature": 10.00, "boiler-temperature": 20.00}
 
-    sprintf(topic, "%s%s", FIRST_PART_TOPIC, deviceLabel);
+    sprintf(topic, "%s%s", _first_part_topic, deviceLabel);
     sprintf(payload, "{");
     for (int i = 0; i <= currentValue; ) {
         str = String((val+i)->_value, 2);
@@ -250,7 +254,7 @@ bool Ubidots::ubidotsPublishOnlyValues(char *deviceLabel, bool freeMemory) {
         // Serial.println(strlen(payload));
     }
     currentValue = 0;
-    return _client.publish(topic, payload, 500);
+    return _client.publish(topic, payload, 2000);
 }
 
 

@@ -1,11 +1,11 @@
 // First we include the libraries
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+//#include <Wire.h>
+//#include <LiquidCrystal_I2C.h>
 #include <ESP8266WiFi.h>
 #include <UbidotsESPMQTT.h>
-#include <SolarPanelEnvironment.h>
+#include <GreenHouseEnvironment.h>
 
 bool SERIAL_COMMUNICATION_ENABLED = true;
 
@@ -24,12 +24,12 @@ const char* SSID_PASS = "36kexrah4e1s";
 
 int ubidotsProfileIndex = 0;
 int thingsProfileIndex = 0;
-const int PROFILE = "solarubidots";
+const char* PROFILE = "ubidots";
 
 char* servers[2] = {
   "things.ubidots.com",
   "mqtt.thingspeak.com"
-}
+};
 
 const char* UBIDOTS_PROFILE = "ubidots";
 const char* THINGSPEAK_PROFILE = "thingspeak";
@@ -37,26 +37,27 @@ const char* ACTIVE_PROFILE = UBIDOTS_PROFILE;
 
 // test
 // const char* TOKEN = "A1E-Brpd96xLq77tUwPkpXsXvCHCzdX4dZ";
-// const char* DEVICE_LABEL = "solar-panel-test-env";
 // const char* HTTPSERVER = "things.ubidots.com";
+// const char* API_ENDPOINT = "/v1.6/devices/";
+// const char* DEVICE_LABEL = "solar-panel-test-env";
 
 // artan
 // const char* TOKEN = "A1E-Brpd96xLq77tUwPkpXsXvCHCzdX4dZ";
-// const char* DEVICE_LABEL = "wemos-d1-mini";
 // const char* HTTPSERVER = "things.ubidots.com";
+// const char* API_ENDPOINT = "/v1.6/devices/";
+// const char* DEVICE_LABEL = "wemos-d1-mini";
 
 // robert
 const char* TOKEN = "A1E-Brpd96xLq77tUwPkpXsXvCHCzdX4dZ";
-const char* DEVICE_LABEL = "green-house-project";
-const char* HTTPSERVER = "mqtt.thingspeak.com";
+const char* HTTPSERVER = "mqtt://things.ubidots.com";
+const char* API_ENDPOINT = "/v1.6/devices/";
+const char* DEVICE_LABEL = "green-house-robert";
+//const char* HTTPSERVER = "mqtt.thingspeak.com";
 
 // common
-const char* USER_AGENT = "ESP8266";
-const char* VERSION = "1.0";
-int HTTPPORT = 80;
-
-// Pump relay pin
-#define PUMP_RELAY_PIN  D7
+//const char* USER_AGENT = "ESP8266";
+//const char* VERSION = "1.0";
+//int HTTPPORT = 80;
 
 // http client
 WiFiClient clientUbi;
@@ -77,31 +78,30 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
 // LCD + I2C
-LiquidCrystal_I2C lcd(0x27, 16, 2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+// LiquidCrystal_I2C lcd(0x27, 16, 2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 // solar panel environment
-SolarPanelEnvironment env;
+GreenHouseEnvironment env;
 
 void setup(void) {
   serialSetup();
   oneWireSensorsSetup();
   wifiSetup();
   mqttSetup();
-  pumpRelaySetup();
-  //  lcdSetup();
+  // pumpRelaySetup();
+  // lcdSetup();
 
   env.init(millis());
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  if (ACTIVE_PROFILE == THINGSPEAK_PROFILE) {
-    return;
-  }
+  // if (ACTIVE_PROFILE == THINGSPEAK_PROFILE) {
+  //   return;
+  // }
 
   serialPrintln("");
   serialPrintln("Message arrived");
 
-  // Message arrived [/v1.6/devices/solar-panel-test-env/pump-start/lv] 13
 
   serialPrint(" topic: [");
   serialPrint(String(topic));
@@ -173,24 +173,23 @@ void updateVariableByRef(Variable& variable, String stringValue) {
 
 void mqttSetup() {
   mqttClient.setDebug(true); // Pass a true or false bool value to activate debug messages
-  mqttClient.ubidotsSetBroker(HTTPSERVER);
+  mqttClient.ubidotsSetBroker((char*)HTTPSERVER);
+  mqttClient.ubidotsSetFirstPartTopic((char*)API_ENDPOINT);
   bool connected = mqttClient.wifiConnection((char *)SSID_NAME, (char *)SSID_PASS);
-  if (connected && ACTIVE_PROFILE == UBIDOTS_PROFILE) {
+  if (connected) {
+    Serial.println(" MQTT connected succesfully.");
     mqttClient.begin(callback);
     mqttSubscribeVariables();
+  } else {
+    Serial.println(" MQTT not connected!!!");
   }
 }
 
 void mqttSubscribeVariables() {
-  if (ACTIVE_PROFILE == THINGSPEAK_PROFILE) {
-    return;
-  }
-  mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "pump-start");
-  mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "pump-stop");
-  mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "solar-panel-index");
-  mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "sensors-number");
-  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "alter-solar-panel-temperature");
-  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "alter-boiler-temperature");
+  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "pump-start");
+  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "pump-stop");
+  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "solar-panel-index");
+  // mqttClient.ubidotsSubscribe((char *)DEVICE_LABEL, "sensors-number");
 }
 
 void mqttPublish() {
@@ -243,16 +242,6 @@ void serialSetup() {
   // while (!Serial) {
   //   ; // wait for serial port to connect. Needed for native USB
   // }
-}
-
-void pumpRelaySetup() {
-  if (ACTIVE_PROFILE == THINGSPEAK_PROFILE) {
-    return;
-  }
-
-  pinMode(PUMP_RELAY_PIN , OUTPUT);
-  // turn the pump off by default
-  digitalWrite(PUMP_RELAY_PIN , HIGH);
 }
 
 void wifiSetup() {
@@ -332,11 +321,6 @@ void loop(void) {
   // read temperature of wired devices
   readTemperatures();
 
-  // pump switch on/off based on the environment variables
-  runSystemComputations();
-  updateThePumpStatus();
-  prepareSystemUpTime();
-
   // send to ubidots
   mqttPublish();
 
@@ -359,37 +343,6 @@ void serialPrint(String strValue) {
     return;
   }
   Serial.print(strValue);
-}
-
-void runSystemComputations() {
-  serialPrintln("");
-  serialPrintln(F("Computing:"));
-  printControlPanelVariables();
-
-  switch (env.systemMode.getIntValue()) {
-    case 0:
-      // OFF
-      env.pumpON = false;
-      break;
-    case 1:
-      // ON
-      env.pumpON = true;
-      break;
-    case 2:
-      // Vacation
-      env.pumpON = true;
-      break;
-    case 3:
-      // Auto
-      runAutoSystemModeComputations();
-      break;
-  }
-
-  env.checkPumpONState();
-  printErrorMessages();
-
-  serialPrintln(" Computed values: ");
-  printEnvironmentComtutedValues();
 }
 
 void serialPrintFloat(const char* formatedMessage, float floatValue) {
@@ -452,105 +405,20 @@ void serialPrintCalculatedValue(const char* variableLabel, String value) {
   free(str);
 }
 
-void printControlPanelVariables() {
-  serialPrintln(" Variables: ");
-  serialPrintVariable(env.systemRunningTime);
-  for (int idx = 0; idx < env.downloadVariablesSize; idx++) {
-    serialPrintVariable(*env.downloadVariables[idx]);
-  }
-}
-
-void runAutoSystemModeComputations() {
-  // start & stop are constants
-  // start = 10;
-  env.start = env.startPump.getFloatValue();
-  // stop = 5;
-  env.stop = env.stopPump.getFloatValue();
-}
-
-void printEnvironmentComtutedValues() {
-  serialPrintCalculatedValue(" targetDelta", String(env.targetDelta));
-  serialPrintCalculatedValue(" start", String(env.start));
-  serialPrintCalculatedValue(" stop", String(env.stop));
-  serialPrintCalculatedValue(" env.getSolarPanelTemperature()", String(env.getSolarPanelTemperature()));
-  serialPrintCalculatedValue(" env.getBoilerTemperature()", String(env.getBoilerTemperature()));
-  serialPrintCalculatedValue(" isPanelSafetyON", String(env.isPanelSafetyON()));
-  serialPrintCalculatedValue(" env.pumpON", String(env.pumpON));
-}
-
-void printErrorMessages() {
-  if (env.messages.isEmpty() == false) {
-    serialPrint("");
-    serialPrintln(env.messages.getStringValue().c_str());
-  }
-}
-
-void updateThePumpStatus() {
-  if (env.pumpON) {
-    serialPrintF(" Pump is ON\n");
-    digitalWrite(PUMP_RELAY_PIN , LOW);
-  } else {
-    serialPrintF(" Pump is OFF\n");
-    digitalWrite(PUMP_RELAY_PIN , HIGH);
-  }
-  env.pumpStatus.setIntValue(env.pumpON);
-}
-
 void readTemperatures() {
   serialPrintF("\n");
   serialPrintF("Requesting temperatures...\n");
   sensors.requestTemperatures();
   //Serial.println("DONE");
 
-  for (int idx = 0; idx < env.boilerTemperatureSensors.getIntValue(); idx++) {
-    if (env.getSolarPanelIndex() == idx) {
-      /*** solar panel *************************************************************/
-      // float temp2 = sensors.getTempCByIndex(env.solarPanelIndex.getIntValue());
-      float temp2 = sensors.getTempCByIndex(idx);
-//      env.getSolarPanelVariable().setFloatValue(temp2);
-      env.temperatureSensors[idx].setFloatValue(temp2);
-      // serialPrintFloat(" Solar panel temperature is: %.2f\n", temp2);
-      serialPrint("sensor[");
-      serialPrint(String(idx + 1));
-      serialPrint("] - Solar panel temperature is: ");
-      serialPrintln(String(temp2));
-
-      lcdPrint(0, 1, "Panel:    " + String(temp2) + " C");
-      // celsius sign
-      lcdPrint(15, 1, (char)223);
-    } else {
-      /*** boiler *****************************************************************/
-      float temp1 = sensors.getTempCByIndex(idx);
-      env.temperatureSensors[idx].setFloatValue(temp1);
-      // serialPrintFloat(" Boiler temperature is: %.2f\n", temp1);
-      serialPrint("sensor[");
-      serialPrint(String(idx + 1));
-      serialPrint("] - Boiler temperature is: ");
-      serialPrintln(String(temp1));
-
-      lcdPrint(0, 0, "Boiler:   " + String(temp1) + " C");
-      // celsius sign
-      lcdPrint(15, 0, (char)223);
-    }
+  for (int idx = 0; idx < env.temperatureSensorsSize; idx++) {
+    float temp = sensors.getTempCByIndex(idx);
+    env.temperatureSensors[idx].setFloatValue(temp);
+    serialPrint("sensor[");
+    serialPrint(String(idx + 1));
+    serialPrint("] - Solar panel temperature is: ");
+    serialPrintln(String(temp));
   }
-}
-
-void prepareSystemUpTime() {
-  // prepare systemRunningTime in minutes
-  int oneMinute = 60000;
-  unsigned long currentMillis = millis();
-  unsigned long interval = currentMillis - env.previousMillis;
-  if (currentMillis < env.previousMillis) {
-    interval = currentMillis;
-    // loosing the interval from the previousMillis until the rollover
-  }
-  env.previousMillis += interval;
-  env.upTime += interval;
-  env.cycleNo++;
-  env.cycles.setStringValue(String(env.cycleNo));
-
-  unsigned long currentTime = env.upTime / oneMinute;
-  env.systemRunningTime.setStringValue(String(currentTime, DEC));
 }
 
 char* stringToChar(String stringValue) {
@@ -583,22 +451,12 @@ void prepareMqttPublishValues() {
     mqttClient.add(stringToChar(env.getSolarPanelVariable().getLabel()), env.getSolarPanelTemperature());
   */
 
-  for (int idx = 0; idx < env.boilerTemperatureSensors.getIntValue(); idx++) {
+  for (int idx = 0; idx < env.temperatureSensorsSize; idx++) {
     Variable var = env.temperatureSensors[idx];
-    float value = 0;
-    if (idx == env.getSolarPanelIndex()) {
-      value = env.getSolarPanelTemperature();
-      //value = env.getSolarPanelVariable().getFloatValue();
-    } else {
-      value = env.getBoilerTemperature();
-      //value = env.getBoilerVariable().getFloatValue();
-    }
-    mqttClient.add(stringToChar(var.getLabel()), value);
+    mqttClient.add(stringToChar(var.getLabel()), var.getFloatValue());
   }
   mqttPublishValues();
 
-  //  serialPrintVariable(env.pumpStatus);
-  mqttClient.add(stringToChar(env.pumpStatus.getLabel()), env.pumpStatus.getFloatValue());
   //  serialPrintVariable(env.systemRunningTime);
   mqttClient.add(stringToChar(env.systemRunningTime.getLabel()), env.systemRunningTime.getFloatValue());
   //  serialPrintVariable(env.cycles);
